@@ -57,7 +57,7 @@ exports.login = async (req, res) => {
         } else {
             if (user.timeLock > Date.now()) {
                 return res.json({ status: 'account was lock please back at 1 hour later' })
-            }else if (user.loginExpired > new Date() ){
+            } else if (user.loginExpired > new Date()) {
                 return res.json({ status: 'account was login at another device' })
             }
             else {
@@ -72,7 +72,8 @@ exports.login = async (req, res) => {
                     }
                 } else {
                     let token = jwt.sign({ id: user._id }, "testNodemailer", { expiresIn: 900000 });
-                    await usersModel.updateOne({ _id: user._id }, { token: token, wrongCount: 0 ,
+                    await usersModel.updateOne({ _id: user._id }, {
+                        token: token, wrongCount: 0,
                         loginExpired: new Date(Date.now() + 900000)
                     });
                     res.cookie("user", token, { expires: new Date(Date.now() + 900000) });
@@ -92,7 +93,7 @@ exports.logOut = async function (req, res) {
     try {
         console.log(req.params.id);
         let user = await usersModel.updateOne(
-            { _id: req.params.id }, // phan nay la su dung header o Reactjs
+            { _id: req.params.id },
             {
                 token: "",
                 loginExpired: new Date()
