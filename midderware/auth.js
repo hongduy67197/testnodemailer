@@ -4,12 +4,13 @@ const jwt = require('jsonwebtoken')
 async function checkToken(req, res, next) {
     let searchTokenUser
     try {
-        let token = req.headers.authorization
+        let token = req.cookies.user
+        console.log(token);
         searchTokenUser = await userModel.findOne(
             { token: token }
         )
         if (searchTokenUser) {
-            let id = jwt.verify(token, 'projectFEB1')
+            let id = jwt.verify(token, 'testNodemailer')
             if (id) {
                 delete searchTokenUser._doc.token
                 delete searchTokenUser._doc.password

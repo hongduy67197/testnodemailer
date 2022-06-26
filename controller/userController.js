@@ -8,22 +8,24 @@ const bcrypt = require("bcryptjs");
 
 exports.register = async function (req, res) {
     try {
-        const { password, email } = req.body;
+        console.log(req.body);
+        const { password, email, username } = req.body;
         const alreadyExistEmail = await usersModel.findOne({ email: email });
+        console.log(14, alreadyExistEmail);
         if (alreadyExistEmail) {
             return res.status(400).json({ status: "Email already exists" });
         } else {
             const hashed = await hashPassword(password);
             const newUser = await usersModel.create({
                 // email: email,
+                username: username,
                 password: hashed,
             });
-            const newCart = await cartsModel.create({ idUser: newUser._id });
             codeCheck.setCode(generateCode());
             await sendEMail(newUser._id, email, codeCheck.getCode(), transporter);
             newUser.code = codeCheck.getCode();
             await newUser.save();
-            return res.status(200).json({ message: "create user success" });
+            return res.status(200).json({ message: "create user success, please check your email" });
         }
     } catch (error) {
         res.json(error);
@@ -49,11 +51,14 @@ exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
         const user = await usersModel.findOne({ email });
+        console.log(user);
         if (!user) {
             return res.json({ status: 'account not avilable' })
         } else {
             if (user.timeLock > Date.now()) {
-                return res.json({ status: 'account was lock pleas back at 1 hour later' })
+                return res.json({ status: 'account was lock please back at 1 hour later' })
+            }else if (user.loginExpired > new Date() ){
+                return res.json({ status: 'account was login at another device' })
             }
             else {
                 const matchPassword = await comparePassword(password, user.password);
@@ -66,8 +71,10 @@ exports.login = async (req, res) => {
                         return res.json({ status: 'undifind password' });
                     }
                 } else {
-                    let token = jwt.sign({ id: user._id }, "testNodemailer", { expiresIn: 10 });
-                    await usersModel.updateOne({ _id: user._id }, { token: token, wrongCount: 0 });
+                    let token = jwt.sign({ id: user._id }, "testNodemailer", { expiresIn: 900000 });
+                    await usersModel.updateOne({ _id: user._id }, { token: token, wrongCount: 0 ,
+                        loginExpired: new Date(Date.now() + 900000)
+                    });
                     res.cookie("user", token, { expires: new Date(Date.now() + 900000) });
                     res.json({
                         data: { token: token, userData: user },
@@ -83,15 +90,17 @@ exports.login = async (req, res) => {
 
 exports.logOut = async function (req, res) {
     try {
+        console.log(req.params.id);
         let user = await usersModel.updateOne(
-            { _id: req.user._id }, // phan nay la su dung header o Reactjs
+            { _id: req.params.id }, // phan nay la su dung header o Reactjs
             {
                 token: "",
+                loginExpired: new Date()
             }
         );
         res.status(200).json({ message: "logout success" });
     } catch (error) {
-        console.log(error);
+        console.log(102, error);
         res.json(error);
     }
 };
