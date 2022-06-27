@@ -2,30 +2,31 @@ const usersModel = require('../models/userSchema')
 const { hashPassword, comparePassword } = require('../services/auth')
 const { transporter, generateCode, sendEMail } = require("../utils/utils");
 const { CodeCheck } = require("../utils/utils");
+const { validateEmail, validatePassPartern } = require('../utils/validate')
 const codeCheck = new CodeCheck();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
 exports.register = async function (req, res) {
     try {
-        console.log(req.body);
         const { password, email, username } = req.body;
-        const alreadyExistEmail = await usersModel.findOne({ email: email });
-        console.log(14, alreadyExistEmail);
-        if (alreadyExistEmail) {
-            return res.status(400).json({ status: "Email already exists" });
-        } else {
-            const hashed = await hashPassword(password);
-            const newUser = await usersModel.create({
-                // email: email,
-                username: username,
-                password: hashed,
-            });
-            codeCheck.setCode(generateCode());
-            await sendEMail(newUser._id, email, codeCheck.getCode(), transporter);
-            newUser.code = codeCheck.getCode();
-            await newUser.save();
-            return res.status(200).json({ message: "create user success, please check your email" });
+        if (validateEmail(email) && validatePassPartern(password)) {
+            const alreadyExistEmail = await usersModel.findOne({ email: email });
+            if (alreadyExistEmail) {
+                return res.status(400).json({ status: "Email already exists" });
+            } else {
+                const hashed = await hashPassword(password);
+                const newUser = await usersModel.create({
+                    // email: email,
+                    username: username,
+                    password: hashed,
+                });
+                codeCheck.setCode(generateCode());
+                await sendEMail(newUser._id, email, codeCheck.getCode(), transporter);
+                newUser.code = codeCheck.getCode();
+                await newUser.save();
+                return res.status(200).json({ message: "create user success, please check your email" });
+            }
         }
     } catch (error) {
         res.json(error);
